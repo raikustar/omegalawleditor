@@ -4,23 +4,9 @@
 #include <vector>
 
 
+
 // App colours and other visual misc..
-struct AppVisuals {
-    wxColour backgroundColour{ 75,75,75 };
-    wxColour lineIdentifierBackgroundColour{ 50,50,50 };
-    wxColour lineIdentifierTextColour{ 250,100,0 };
-    wxColour backgroundColourLight{ 100,100,100 };
-    wxColour textColour{ 225,100,0 };
-};
-
 AppVisuals vis{};
-
-class MyApp : public wxApp
-{
-public:
-    bool OnInit() override;
-    
-};
 
 wxIMPLEMENT_APP(MyApp);
 
@@ -44,6 +30,7 @@ MyFrame::MyFrame()
     // Menu
     wxMenu* menuFile = new wxMenu;
     menuFile->Append(wxID_OPEN, "Open", "Open a file");
+    menuFile->Append(wxID_SAVEAS, "Save as\tCtrl-S", "Save file as ..");
     menuFile->AppendSeparator();
     menuFile->Append(wxID_EXIT, "Exit\tAlt-X", "Exit the program");
 
@@ -63,19 +50,19 @@ MyFrame::MyFrame()
 
     // Notepad 
     textField = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_RICH | wxUSE_SCROLLBAR);
-    wxTextAttr newStyle{};
+    
+    // Visual colours
+    newStyle.SetFont(*font);
     newStyle.SetTextColour(vis.textColour);
     newStyle.SetBackgroundColour(vis.backgroundColourLight);
 
-    // Visual colours
+    redrawTextCtrlWindow();
 
-    textField->SetFont(*font);
-    textField->SetBackgroundColour(vis.backgroundColourLight);
-    textField->SetDefaultStyle(wxTextAttr(vis.textColour, vis.backgroundColourLight));
-    textField->SetStyle(0, textField->GetLastPosition(), newStyle);
+    if (textField->IsEmpty()) 
+    {
+        redrawTextCtrlWindow();
+    }
     
-
-
     mainBoxSizer->Add(numberField, 0, wxALL | wxEXPAND, 0);
     mainBoxSizer->Add(textField, 1, wxALL | wxEXPAND, 0);
 
@@ -86,6 +73,7 @@ MyFrame::MyFrame()
 
     Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
     Bind(wxEVT_MENU, &MyFrame::OnFileOpen, this, wxID_OPEN);
+    Bind(wxEVT_MENU, &MyFrame::OnSaveAs, this, wxID_SAVEAS);
     
 
 }
@@ -116,12 +104,49 @@ void MyFrame::OnFileOpen(wxCommandEvent& event)
     
     textField->SetValue(fileContent);
     
-
+    redrawTextCtrlWindow();
 }
 
-// Refresh colours after loading data from file.
+void MyFrame::redrawTextCtrlWindow() 
+{
+    textField->SetFont(newStyle.GetFont());
+    textField->SetBackgroundColour(newStyle.GetBackgroundColour());
+    textField->SetDefaultStyle(newStyle);
+    textField->SetStyle(0, textField->GetLastPosition(), newStyle);
+    // Force re-draw
+    textField->Refresh();
+    textField->Update();
+};
 
-// Make header file 
+void MyFrame::OnSaveAs(wxCommandEvent& event) 
+{
+    wxFileDialog saveFileDialog(this, "Save file as",wxEmptyString, "*.txt", wxFileSelectorDefaultWildcardStr, wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+
+    if (saveFileDialog.ShowModal() == wxID_CANCEL) {
+        return;
+    }
+
+    wxFileOutputStream output_stream(saveFileDialog.GetPath());
+    wxString content{};
+    if (!output_stream.IsOk())
+    {
+        wxLogError("Cannot save contents in file '%s'.", saveFileDialog.GetPath());
+        return;
+    }
+    else {
+        content = textField->GetValue();
+        output_stream.Write(content.mb_str(), content.length());
+        wxMessageBox("Success!", "Saved file");
+        return;
+    }
+}
+
+
+
+
+
+// if wxTextCtrl window = "" (empty string or 0), it reverts back to default colour
+// it continues to new line, set line length limit to large?
 
 // add numbers at the start of new line
 // generate number per line.
