@@ -166,6 +166,7 @@ void MyFrame::OnSave(wxCommandEvent& event)
 void MyFrame::OnTextChanged(wxCommandEvent& event)
 {
     updateLineNumbers();
+    statusUpdateText("Unsaved changes..", false);
     event.Skip();
 }
 
@@ -237,9 +238,17 @@ int MyFrame::getLineNumber(long pos) {
 
 }
 
-void MyFrame::statusUpdateText(wxString a, bool path) {
-    wxString status = wxString::Format(a + " - " + app_data.dataFilePath);
+void MyFrame::statusUpdateText(wxString statusText, bool path) {
+    wxString status{};
+    if (path) {
+        status = wxString::Format(statusText + " - " + app_data.dataFilePath);
+    }
+    else {
+        status = statusText;
+    }
     SetStatusText(status);
 }
 
+
+// Distinguish the individual line currently being written on?
 
