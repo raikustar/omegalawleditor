@@ -6,7 +6,7 @@
 
 
 // App colours and other visual misc..
-AppVisuals vis{};
+AppData app_data{};
 
 wxIMPLEMENT_APP(MyApp);
 
@@ -23,11 +23,12 @@ MyFrame::MyFrame()
 {
     wxFont* font = new wxFont(14, wxFONTFAMILY_SCRIPT, wxFONTSTYLE_SLANT, wxFONTWEIGHT_HEAVY, false);
 
-    this->SetBackgroundColour(vis.backgroundColour);
+    this->SetBackgroundColour(app_data.backgroundColour);
 
     // Menu
     wxMenu* menuFile = new wxMenu;
     menuFile->Append(wxID_OPEN, "Open", "Open a file");
+    menuFile->Append(wxID_SAVE, "Save\tCtrl-S", "Quick save");
     menuFile->Append(wxID_SAVEAS, "Save as\tCtrl-Shift-S", "Save file as ..");
     menuFile->AppendSeparator();
     menuFile->Append(wxID_EXIT, "Exit\tAlt-X", "Exit the program");
@@ -43,8 +44,8 @@ MyFrame::MyFrame()
     numberField = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxSize(60, 350), wxTE_MULTILINE | wxTE_RICH | wxTE_CENTER | wxTE_READONLY | wxTE_NOHIDESEL | wxTE_DONTWRAP | wxTE_NO_VSCROLL);
 
     numberField->SetFont(*font);
-    numberField->SetForegroundColour(vis.lineIdentifierTextColour);
-    numberField->SetBackgroundColour(vis.lineIdentifierBackgroundColour);
+    numberField->SetForegroundColour(app_data.lineIdentifierTextColour);
+    numberField->SetBackgroundColour(app_data.lineIdentifierBackgroundColour);
     numberField->Refresh();
     numberField->Update();
 
@@ -54,8 +55,8 @@ MyFrame::MyFrame()
    
     // Visual colours
     newStyle.SetFont(*font);
-    newStyle.SetTextColour(vis.textColour);
-    newStyle.SetBackgroundColour(vis.backgroundColourLight);
+    newStyle.SetTextColour(app_data.textColour);
+    newStyle.SetBackgroundColour(app_data.backgroundColourLight);
 
     redrawTextCtrlWindow();
     if (textField->IsEmpty()) 
@@ -72,19 +73,16 @@ MyFrame::MyFrame()
     this->SetInitialSize(wxSize(800, 500));
 
     CreateStatusBar();
-    SetStatusText("Welcome to Omegalawl Editor!");
+    SetStatusText(app_data.dataFilePath); 
 
 
     textField->Bind(wxEVT_TEXT, &MyFrame::OnScrollUpdate, this);
     textField->Bind(wxEVT_TEXT, &MyFrame::OnTextChanged, this);
 
-
-
-    
-
     numberField->Bind(wxEVT_KILL_FOCUS, &MyFrame::OnRemoveNumberFieldFocus, this);
     Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
     Bind(wxEVT_MENU, &MyFrame::OnFileOpen, this, wxID_OPEN);
+    Bind(wxEVT_MENU, &MyFrame::OnSave, this, wxID_SAVE);
     Bind(wxEVT_MENU, &MyFrame::OnSaveAs, this, wxID_SAVEAS);
     
 }
@@ -104,7 +102,7 @@ void MyFrame::OnFileOpen(wxCommandEvent& event)
         return;
     
     wxString filePath = fileDialog.GetPath();
-
+    app_data.dataFilePath = filePath;
     wxFile openFile(filePath);
     
     if (!openFile.IsOpened()) {
@@ -116,13 +114,16 @@ void MyFrame::OnFileOpen(wxCommandEvent& event)
     openFile.ReadAll(&fileContent);
     
     textField->SetValue(fileContent);
-    
+
     redrawTextCtrlWindow();
+    statusUpdateText("Opened file from");
+    
 }
 
 void MyFrame::OnSaveAs(wxCommandEvent& event) 
 {
-    wxFileDialog saveFileDialog(this, "Save file as",wxEmptyString, "*.txt", wxFileSelectorDefaultWildcardStr, wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+    
+    wxFileDialog saveFileDialog(this, "Save file as", wxEmptyString, wxEmptyString, "All files (*.*)|*.*|Text files (*.txt)|*.txt|Python (*.py)|*.py", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 
     if (saveFileDialog.ShowModal() == wxID_CANCEL) {
         return;
@@ -136,11 +137,30 @@ void MyFrame::OnSaveAs(wxCommandEvent& event)
         return;
     }
     else {
+        app_data.dataFilePath = saveFileDialog.GetPath();
         content = textField->GetValue();
         output_stream.Write(content.mb_str(), content.length());
         output_stream.Sync();
-        wxMessageBox("Success!", "Saved file");
+        statusUpdateText("Saved file to");
     }
+
+}
+
+void MyFrame::OnSave(wxCommandEvent& event)
+{
+    wxString fileContent{};
+
+    if (app_data.dataFilePath == "") {
+        MyFrame::OnSaveAs(event);
+    }
+    else {
+        wxFileOutputStream output_stream(app_data.dataFilePath);
+        fileContent = textField->GetValue();
+        output_stream.Write(fileContent.mb_str(), fileContent.length());
+        output_stream.Sync();
+        statusUpdateText("Quick save to file");
+    }
+
 }
 
 void MyFrame::OnTextChanged(wxCommandEvent& event)
@@ -200,7 +220,7 @@ void MyFrame::updateScrollPosition()
 
         // Get textField current line
         int pos = textField->GetInsertionPoint();
-        int lineNum = GetLineNumber(pos);
+        int lineNum = getLineNumber(pos);
 
         // Set follow for numberField based on textField line number
         numberField->SetInsertionPoint(lineNum);
@@ -210,10 +230,16 @@ void MyFrame::updateScrollPosition()
     }
 }
 
-int MyFrame::GetLineNumber(long pos) {
+int MyFrame::getLineNumber(long pos) {
     long col{}, line{};
     textField->PositionToXY(pos, &col, &line);
     return line + 1;
 
 }
+
+void MyFrame::statusUpdateText(wxString a, bool path) {
+    wxString status = wxString::Format(a + " - " + app_data.dataFilePath);
+    SetStatusText(status);
+}
+
 

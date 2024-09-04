@@ -8,12 +8,12 @@
 #include <wx/file.h>
 #include <wx/richtext/richtextbuffer.h>
 #include <wx/scrolbar.h>
+#include <wx/filefn.h> 
 
-#include <vector>
 
-
-struct AppVisuals {
+struct AppData {
     
+    wxString dataFilePath{ "" };
     wxColour backgroundColour{ 50,50,50 };
     wxColour lineIdentifierBackgroundColour{ 50,50,50 };
     wxColour lineIdentifierTextColour{ 250,100,0 };
@@ -43,10 +43,12 @@ private:
     void redrawTextCtrlWindow();
     void updateLineNumbers();
     void updateScrollPosition();
-    int GetLineNumber(long);
+    int getLineNumber(long);
+    void statusUpdateText(wxString, bool path = true);
 
     void OnExit(wxCommandEvent& event);
     void OnFileOpen(wxCommandEvent& event);
+    void OnSave(wxCommandEvent& event);
     void OnSaveAs(wxCommandEvent& event);
     void OnTextChanged(wxCommandEvent& event);
     void OnRemoveNumberFieldFocus(wxFocusEvent& event);
