@@ -2,14 +2,10 @@
 #include "omegalawl_header.h"
 // other includes
 
-
-
-
 // App colours and other visual misc..
 AppData app_data{};
 
 wxIMPLEMENT_APP(MyApp);
-
 
 bool MyApp::OnInit()
 {
@@ -18,6 +14,9 @@ bool MyApp::OnInit()
     return true;
 }
 
+enum {
+    CUSTOM_OPTION = 10
+};
 MyFrame::MyFrame()
     : wxFrame(nullptr, wxID_ANY, "Omegalawl Editor", wxDefaultPosition, wxSize(800,500), wxDEFAULT_FRAME_STYLE)
 {
@@ -26,15 +25,19 @@ MyFrame::MyFrame()
     this->SetBackgroundColour(app_data.backgroundColour);
 
     // Menu
-    wxMenu* menuFile = new wxMenu;
+    wxMenu* menuFile = new wxMenu{};
     menuFile->Append(wxID_OPEN, "Open", "Open a file");
     menuFile->Append(wxID_SAVE, "Save\tCtrl-S", "Quick save");
     menuFile->Append(wxID_SAVEAS, "Save as\tCtrl-Shift-S", "Save file as ..");
     menuFile->AppendSeparator();
     menuFile->Append(wxID_EXIT, "Exit\tAlt-X", "Exit the program");
 
-    wxMenuBar* menuBar = new wxMenuBar;
-    menuBar->Append(menuFile, "&File");
+    wxMenu* menuOptions = new wxMenu{};
+    menuOptions->Append(CUSTOM_OPTION, "Visuals", "Options - Visuals");
+
+    wxMenuBar* menuBar = new wxMenuBar{};
+    menuBar->Append(menuFile, "File");
+    menuBar->Append(menuOptions, "Options");
     SetMenuBar(menuBar);
 
     // After menu window for all other boxes to be organized 
@@ -55,15 +58,10 @@ MyFrame::MyFrame()
    
     // Visual colours
     newStyle.SetFont(*font);
-    newStyle.SetTextColour(app_data.textColour);
     newStyle.SetBackgroundColour(app_data.backgroundColourLight);
+    newStyle.SetTextColour(app_data.textColour);
 
     redrawTextCtrlWindow();
-    if (textField->IsEmpty()) 
-    {
-        redrawTextCtrlWindow();
-    }
-    
     updateLineNumbers();
 
     mainBoxSizer->Add(numberField, 0, wxALL | wxEXPAND, 0);
@@ -78,8 +76,9 @@ MyFrame::MyFrame()
 
     textField->Bind(wxEVT_TEXT, &MyFrame::OnScrollUpdate, this);
     textField->Bind(wxEVT_TEXT, &MyFrame::OnTextChanged, this);
-
     numberField->Bind(wxEVT_KILL_FOCUS, &MyFrame::OnRemoveNumberFieldFocus, this);
+    
+    Bind(wxEVT_MENU, &MyFrame::OnCustomOpen, this, CUSTOM_OPTION);
     Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
     Bind(wxEVT_MENU, &MyFrame::OnFileOpen, this, wxID_OPEN);
     Bind(wxEVT_MENU, &MyFrame::OnSave, this, wxID_SAVE);
@@ -116,19 +115,16 @@ void MyFrame::OnFileOpen(wxCommandEvent& event)
     textField->SetValue(fileContent);
 
     redrawTextCtrlWindow();
-    statusUpdateText("Opened file from");
+    statusUpdateText("Opened file from -");
     
 }
 
 void MyFrame::OnSaveAs(wxCommandEvent& event) 
 {
-    
     wxFileDialog saveFileDialog(this, "Save file as", wxEmptyString, wxEmptyString, "All files (*.*)|*.*|Text files (*.txt)|*.txt|Python (*.py)|*.py", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-
     if (saveFileDialog.ShowModal() == wxID_CANCEL) {
         return;
     }
-
     wxFileOutputStream output_stream(saveFileDialog.GetPath());
     wxString content{};
     if (!output_stream.IsOk())
@@ -141,31 +137,28 @@ void MyFrame::OnSaveAs(wxCommandEvent& event)
         content = textField->GetValue();
         output_stream.Write(content.mb_str(), content.length());
         output_stream.Sync();
-        statusUpdateText("Saved file to");
+        statusUpdateText("Saved file to -");
     }
-
 }
 
 void MyFrame::OnSave(wxCommandEvent& event)
 {
     wxString fileContent{};
-
     if (app_data.dataFilePath == "") {
         MyFrame::OnSaveAs(event);
-    }
-    else {
+    } else {
         wxFileOutputStream output_stream(app_data.dataFilePath);
         fileContent = textField->GetValue();
         output_stream.Write(fileContent.mb_str(), fileContent.length());
         output_stream.Sync();
-        statusUpdateText("Quick save to file");
+        statusUpdateText("Quick save to file -");
     }
-
 }
 
 void MyFrame::OnTextChanged(wxCommandEvent& event)
 {
     updateLineNumbers();
+    redrawTextCtrlWindow();
     statusUpdateText("Unsaved changes..", false);
     event.Skip();
 }
@@ -181,17 +174,67 @@ void MyFrame::OnRemoveNumberFieldFocus(wxFocusEvent& event) {
     // remove focus from number lines
     numberField->DisableFocusFromKeyboard();
 }
+
+void MyFrame::OnCustomOpen(wxCommandEvent& event) {
+    /* 
+        Open new wxDialog window for options
+    */
+
+    visualsPanel = new wxDialog(this, wxID_ANY, "Options - Visuals", wxDefaultPosition, wxSize(300, 300), wxDEFAULT_DIALOG_STYLE | wxSTAY_ON_TOP);
+    visualsCheckBoxRainbow = new wxCheckBox(visualsPanel, wxID_ANY, "Toggle rainbow text (Coding)", wxPoint(50,50), wxDefaultSize, wxALIGN_RIGHT);
+    visualsCheckBoxRainbow->SetValue(rainbowTextToggle);
+    visualsOkButton = new wxButton(visualsPanel, wxID_ANY, "Ok", wxPoint(65,220), wxSize(70, 30));
+    visualsCancelButton = new wxButton(visualsPanel, wxID_ANY, "Cancel", wxPoint(160, 220), wxSize(70, 30));
+
+    visualsCancelButton->Bind(wxEVT_BUTTON, &MyFrame::OnVisualCancelButtonPressed, this);
+    visualsOkButton->Bind(wxEVT_BUTTON, &MyFrame::OnVisualOkButtonPressed, this);
+
+    visualsPanel->Show();    
+}
+
+void MyFrame::CustomRainbowLogic(){
+    if (visualsCheckBoxRainbow->IsChecked()) {
+        statusUpdateText("Enabled Rainbow Text", false);
+        rainbowTextToggle = true;
+    }
+    else {
+        statusUpdateText("Disabled Rainbow Text", false);
+        rainbowTextToggle = false;
+    }   
+}
+
+void MyFrame::OnVisualCancelButtonPressed(wxCommandEvent& event) {
+    if (visualsPanel) {
+        visualsPanel->Close();
+        visualsPanel = nullptr;
+    } 
+}
+
+void MyFrame::OnVisualOkButtonPressed(wxCommandEvent& event) {
+    if (visualsPanel) {
+        CustomRainbowLogic();
+
+        visualsPanel->Close();
+        visualsPanel = nullptr;
+    }
+}
+
 // Misc member functions
 void MyFrame::redrawTextCtrlWindow()
 {
-    textField->SetFont(newStyle.GetFont());
-    textField->SetBackgroundColour(newStyle.GetBackgroundColour());
-    textField->SetDefaultStyle(newStyle);
-    textField->SetStyle(0, textField->GetLastPosition(), newStyle);
-    textField->SetFocus();
-    // Force re-draw
-    textField->Refresh();
-    textField->Update();
+    if (rainbowTextToggle) {
+        changeTextFieldColourToRainbow();
+    }
+    else {
+        textField->SetFont(newStyle.GetFont());
+        textField->SetBackgroundColour(newStyle.GetBackgroundColour());
+        textField->SetDefaultStyle(newStyle);
+        textField->SetStyle(0, textField->GetLastPosition(), newStyle);
+        // Force re-draw
+        textField->SetFocus();
+        textField->Refresh();
+        textField->Update();
+    }
 };
 
 void MyFrame::updateLineNumbers() 
@@ -214,18 +257,16 @@ void MyFrame::updateLineNumbers()
 void MyFrame::updateScrollPosition() 
 {
     int scrollPos = textField->GetScrollPos(wxVERTICAL);
-    int numField{ numberField->GetNumberOfLines() }, txtField{ textField->GetNumberOfLines() + 1};
+    int numField = numberField->GetNumberOfLines(), txtField = textField->GetNumberOfLines() + 1;
 
     if (numField == txtField) {
-        numberField->SetScrollPos(wxVERTICAL, scrollPos);
-
         // Get textField current line
         int pos = textField->GetInsertionPoint();
         int lineNum = getLineNumber(pos);
 
         // Set follow for numberField based on textField line number
-        numberField->SetInsertionPoint(lineNum);
         numberField->ShowPosition(lineNum);
+        numberField->SetScrollPos(wxVERTICAL, lineNum);
         numberField->Refresh();
         numberField->Update();
     }
@@ -235,13 +276,12 @@ int MyFrame::getLineNumber(long pos) {
     long col{}, line{};
     textField->PositionToXY(pos, &col, &line);
     return line + 1;
-
 }
 
 void MyFrame::statusUpdateText(wxString statusText, bool path) {
     wxString status{};
     if (path) {
-        status = wxString::Format(statusText + " - " + app_data.dataFilePath);
+        status = wxString::Format(statusText + " " + app_data.dataFilePath);
     }
     else {
         status = statusText;
@@ -249,6 +289,19 @@ void MyFrame::statusUpdateText(wxString statusText, bool path) {
     SetStatusText(status);
 }
 
-
-// Distinguish the individual line currently being written on?
+void MyFrame::changeTextFieldColourToRainbow() {
+    /*
+        rainbow colors for specific characters / symbols to improve readability of code.
+    */ 
+    wxString newString = textField->GetValue();
+    for (size_t i = 0; i < newString.length();i++) {
+        textField->SetStyle(i, i + 1, app_data.textColour);
+        if (newString[i] == '(' || newString[i] == ')') {
+            textField->SetStyle(i,i+1,app_data.rainbowBraces);
+        }
+        if (newString[i] == '{' || newString[i] == '}') {
+            textField->SetStyle(i, i + 1, app_data.rainbowCurlyBraces);
+        }
+    }
+}
 

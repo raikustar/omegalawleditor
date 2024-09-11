@@ -19,6 +19,10 @@ struct AppData {
     wxColour lineIdentifierTextColour{ 250,100,0 };
     wxColour backgroundColourLight{ 100,100,100 };
     wxColour textColour{ 225,100,0 };
+    wxColour rainbowBraces{ 200,0,200 };
+    wxColour rainbowCurlyBraces{ 200,250,0 };
+
+
 };
 
 
@@ -35,17 +39,35 @@ public:
     MyFrame();
 
 private:
+    // wxWidget main window variables
     wxTextCtrl* numberField;
     wxScrollBar* numberScroll;
     wxTextCtrl* textField;
     wxTextAttr newStyle;
+    wxDialog* visualsPanel;
 
+    // wxWidget option visuals
+    bool rainbowTextToggle{ false };
+    wxCheckBox* visualsCheckBoxRainbow{};
+    wxButton* visualsOkButton{};
+    wxButton* visualsCancelButton{};
+
+    // Misc variables
+    bool customizationWnd{ false };
+    bool customizationWndRainbow{ false };
+
+
+
+    // Misc functions
     void redrawTextCtrlWindow();
     void updateLineNumbers();
     void updateScrollPosition();
-    int getLineNumber(long);
-    void statusUpdateText(wxString, bool path = true);
+    int getLineNumber(long currentPos);
+    void statusUpdateText(wxString statusText, bool path = true);
+    void CustomRainbowLogic();
+    void changeTextFieldColourToRainbow();
 
+    // Event functions
     void OnExit(wxCommandEvent& event);
     void OnFileOpen(wxCommandEvent& event);
     void OnSave(wxCommandEvent& event);
@@ -53,6 +75,10 @@ private:
     void OnTextChanged(wxCommandEvent& event);
     void OnRemoveNumberFieldFocus(wxFocusEvent& event);
     void OnScrollUpdate(wxCommandEvent& event);
+    void OnCustomOpen(wxCommandEvent& event);
+    void OnVisualCancelButtonPressed(wxCommandEvent& event);
+    void OnVisualOkButtonPressed(wxCommandEvent& event);
+
 };
 #endif 
 
