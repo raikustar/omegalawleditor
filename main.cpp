@@ -18,7 +18,7 @@ enum {
     CUSTOM_OPTION = 10
 };
 MyFrame::MyFrame()
-    : wxFrame(nullptr, wxID_ANY, "Omegalawl Editor", wxDefaultPosition, wxSize(800,500), wxDEFAULT_FRAME_STYLE)
+    : wxFrame(nullptr, wxID_ANY, "Omegalawl Editor", wxDefaultPosition, wxSize(1000,800), wxDEFAULT_FRAME_STYLE)
 {
     wxFont* font = new wxFont(14, wxFONTFAMILY_SCRIPT, wxFONTSTYLE_SLANT, wxFONTWEIGHT_HEAVY, false);
 
@@ -74,10 +74,14 @@ MyFrame::MyFrame()
     SetStatusText(app_data.dataFilePath); 
 
 
-    textField->Bind(wxEVT_TEXT, &MyFrame::OnScrollUpdate, this);
     textField->Bind(wxEVT_TEXT, &MyFrame::OnTextChanged, this);
+
+    textField->Bind(wxEVT_KEY_DOWN, &MyFrame::OnKeyUpdate, this);
     numberField->Bind(wxEVT_KILL_FOCUS, &MyFrame::OnRemoveNumberFieldFocus, this);
-    
+
+    // press enter event bind to reload text?
+
+
     Bind(wxEVT_MENU, &MyFrame::OnCustomOpen, this, CUSTOM_OPTION);
     Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
     Bind(wxEVT_MENU, &MyFrame::OnFileOpen, this, wxID_OPEN);
@@ -163,7 +167,14 @@ void MyFrame::OnTextChanged(wxCommandEvent& event)
     event.Skip();
 }
 
+
 void MyFrame::OnScrollUpdate(wxCommandEvent& event)
+{
+    updateScrollPosition();
+    event.Skip();
+}
+
+void MyFrame::OnKeyUpdate(wxKeyEvent& event)
 {
     updateScrollPosition();
     event.Skip();
@@ -192,17 +203,6 @@ void MyFrame::OnCustomOpen(wxCommandEvent& event) {
     visualsPanel->Show();    
 }
 
-void MyFrame::CustomRainbowLogic(){
-    if (visualsCheckBoxRainbow->IsChecked()) {
-        statusUpdateText("Enabled Rainbow Text", false);
-        rainbowTextToggle = true;
-    }
-    else {
-        statusUpdateText("Disabled Rainbow Text", false);
-        rainbowTextToggle = false;
-    }   
-}
-
 void MyFrame::OnVisualCancelButtonPressed(wxCommandEvent& event) {
     if (visualsPanel) {
         visualsPanel->Close();
@@ -212,7 +212,7 @@ void MyFrame::OnVisualCancelButtonPressed(wxCommandEvent& event) {
 
 void MyFrame::OnVisualOkButtonPressed(wxCommandEvent& event) {
     if (visualsPanel) {
-        CustomRainbowLogic();
+        customRainbowLogic();
 
         visualsPanel->Close();
         visualsPanel = nullptr;
@@ -222,19 +222,21 @@ void MyFrame::OnVisualOkButtonPressed(wxCommandEvent& event) {
 // Misc member functions
 void MyFrame::redrawTextCtrlWindow()
 {
+    textField->SetDefaultStyle(newStyle);
+    textField->SetBackgroundColour(newStyle.GetBackgroundColour());
+    textField->SetFont(newStyle.GetFont());
+
     if (rainbowTextToggle) {
         changeTextFieldColourToRainbow();
     }
     else {
-        textField->SetFont(newStyle.GetFont());
-        textField->SetBackgroundColour(newStyle.GetBackgroundColour());
-        textField->SetDefaultStyle(newStyle);
         textField->SetStyle(0, textField->GetLastPosition(), newStyle);
-        // Force re-draw
-        textField->SetFocus();
-        textField->Refresh();
-        textField->Update();
     }
+    // Force re-draw
+    textField->SetFocus();
+    textField->Refresh();
+    textField->Update();
+    
 };
 
 void MyFrame::updateLineNumbers() 
@@ -244,32 +246,44 @@ void MyFrame::updateLineNumbers()
         Add to string how many lines there are with for loop
         Set numbers to numberField object
     */
-    int textFieldLines{ textField->GetNumberOfLines() };
+    int textFieldLines = textField->GetNumberOfLines();
     wxString lineNumberString{};
 
     for (int i = 1; i <= textFieldLines; i++) 
     {
-        lineNumberString += wxString::Format("%d\n", i);
+        lineNumberString += wxString::Format("%d\n", i); 
     }
+
     numberField->SetLabel(lineNumberString);
+    
 }
 
 void MyFrame::updateScrollPosition() 
 {
     int scrollPos = textField->GetScrollPos(wxVERTICAL);
-    int numField = numberField->GetNumberOfLines(), txtField = textField->GetNumberOfLines() + 1;
+    //int numField = numberField->GetNumberOfLines(), txtField = textField->GetNumberOfLines() + 1;
 
-    if (numField == txtField) {
-        // Get textField current line
-        int pos = textField->GetInsertionPoint();
-        int lineNum = getLineNumber(pos);
 
-        // Set follow for numberField based on textField line number
-        numberField->ShowPosition(lineNum);
-        numberField->SetScrollPos(wxVERTICAL, lineNum);
-        numberField->Refresh();
-        numberField->Update();
-    }
+/*
+Currently it changes line on the left instantly
+Create an offset or point where it follows to a new line and when it doesn't
+
+i.e. move up from the last line of the window, 
+and only start updating to new lines if I reach at the top of the current window(highest line per window)
+        
+   
+*/
+
+    // Get textField current line
+    int pos = textField->GetInsertionPoint();
+    int lineNum = getLineNumber(pos);
+    app_data.currentLineNum = lineNum;
+
+    numberField->SetScrollPos(wxVERTICAL, lineNum, true);
+    numberField->ShowPosition(lineNum);
+    numberField->Refresh();
+    numberField->Update();
+    
 }
 
 int MyFrame::getLineNumber(long pos) {
@@ -289,19 +303,45 @@ void MyFrame::statusUpdateText(wxString statusText, bool path) {
     SetStatusText(status);
 }
 
+void MyFrame::customRainbowLogic() {
+    if (visualsCheckBoxRainbow->IsChecked()) {
+        statusUpdateText("Enabled Rainbow Text", false);
+        rainbowTextToggle = true;
+    }
+    else {
+        statusUpdateText("Disabled Rainbow Text", false);
+        rainbowTextToggle = false;
+    }
+}
+
 void MyFrame::changeTextFieldColourToRainbow() {
     /*
         rainbow colors for specific characters / symbols to improve readability of code.
+
+         - Future improvement, maybe use getInsertion to update singular character per string not entire string:
+            if string[i-1] == '(' -> setstyle(i-1, i, colour)
     */ 
-    wxString newString = textField->GetValue();
-    for (size_t i = 0; i < newString.length();i++) {
-        textField->SetStyle(i, i + 1, app_data.textColour);
-        if (newString[i] == '(' || newString[i] == ')') {
-            textField->SetStyle(i,i+1,app_data.rainbowBraces);
-        }
-        if (newString[i] == '{' || newString[i] == '}') {
-            textField->SetStyle(i, i + 1, app_data.rainbowCurlyBraces);
+    int currentLine = app_data.currentLineNum - 1;
+   
+    int currentLineStart = textField->XYToPosition(0, currentLine);
+    int currentLineEnd = textField->XYToPosition(textField->GetLineLength(currentLine), currentLine);
+    wxString currentLineString = textField->GetRange(currentLineStart, currentLineEnd);
+
+
+    if (currentLineString.IsEmpty()) {
+        return;
+    }
+    for (int i = 0; i < currentLineString.length(); i++) {
+        char currentChar = currentLineString[i].GetValue();
+        int offset = currentLineStart + i;
+        if (currentChar == '(' || currentChar == ')') {
+            textField->SetStyle(offset, offset + 1, app_data.rainbowBraces);
+        } else if (currentChar == '{' || currentChar == '}') {
+            textField->SetStyle(offset, offset + 1, app_data.rainbowCurlyBraces);
+        } else {
+            textField->SetStyle(offset, offset + 1, newStyle);
         }
     }
+   
 }
 
