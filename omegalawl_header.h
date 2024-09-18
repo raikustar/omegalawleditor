@@ -72,6 +72,7 @@ private:
     void statusUpdateText(wxString statusText, bool path = true);
     void customRainbowLogic();
     void changeTextFieldColourToRainbow();
+    void RainbowColourSwapFunction(int startPos, wxString currentLineString);
 
     // Event functions
     void OnExit(wxCommandEvent& event);

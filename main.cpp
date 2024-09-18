@@ -2,6 +2,13 @@
 #include "omegalawl_header.h"
 // other includes
 
+/*
+    - Update whole string file if rainbowtoggle bool is changed.
+    - Properly follow current line, and sync up textField with numberField
+    - Highlight current active line
+
+*/
+
 // App colours and other visual misc..
 AppData app_data{};
 
@@ -167,7 +174,6 @@ void MyFrame::OnTextChanged(wxCommandEvent& event)
     event.Skip();
 }
 
-
 void MyFrame::OnScrollUpdate(wxCommandEvent& event)
 {
     updateScrollPosition();
@@ -225,14 +231,8 @@ void MyFrame::redrawTextCtrlWindow()
     textField->SetDefaultStyle(newStyle);
     textField->SetBackgroundColour(newStyle.GetBackgroundColour());
     textField->SetFont(newStyle.GetFont());
-
-    if (rainbowTextToggle) {
-        changeTextFieldColourToRainbow();
-    }
-    else {
-        textField->SetStyle(0, textField->GetLastPosition(), newStyle);
-    }
-    // Force re-draw
+    if (rainbowTextToggle) {changeTextFieldColourToRainbow();}
+    else { textField->SetStyle(0, textField->GetLastPosition(), newStyle);}
     textField->SetFocus();
     textField->Refresh();
     textField->Update();
@@ -307,10 +307,13 @@ void MyFrame::customRainbowLogic() {
     if (visualsCheckBoxRainbow->IsChecked()) {
         statusUpdateText("Enabled Rainbow Text", false);
         rainbowTextToggle = true;
+        wxString fullText = textField->GetValue();
+        RainbowColourSwapFunction(0, fullText);
     }
     else {
         statusUpdateText("Disabled Rainbow Text", false);
         rainbowTextToggle = false;
+        textField->SetStyle(0, textField->GetLastPosition(), newStyle);
     }
 }
 
@@ -318,7 +321,7 @@ void MyFrame::changeTextFieldColourToRainbow() {
     /*
         rainbow colors for specific characters / symbols to improve readability of code.
 
-         - Future improvement, maybe use getInsertion to update singular character per string not entire string:
+         - Future improvement, maybe use getInsertion to update singular character per line of string, not entire string:
             if string[i-1] == '(' -> setstyle(i-1, i, colour)
     */ 
     int currentLine = app_data.currentLineNum - 1;
@@ -327,21 +330,19 @@ void MyFrame::changeTextFieldColourToRainbow() {
     int currentLineEnd = textField->XYToPosition(textField->GetLineLength(currentLine), currentLine);
     wxString currentLineString = textField->GetRange(currentLineStart, currentLineEnd);
 
-
     if (currentLineString.IsEmpty()) {
         return;
     }
-    for (int i = 0; i < currentLineString.length(); i++) {
-        char currentChar = currentLineString[i].GetValue();
-        int offset = currentLineStart + i;
-        if (currentChar == '(' || currentChar == ')') {
-            textField->SetStyle(offset, offset + 1, app_data.rainbowBraces);
-        } else if (currentChar == '{' || currentChar == '}') {
-            textField->SetStyle(offset, offset + 1, app_data.rainbowCurlyBraces);
-        } else {
-            textField->SetStyle(offset, offset + 1, newStyle);
-        }
-    }
-   
+    RainbowColourSwapFunction(currentLineStart,currentLineString);
 }
 
+void MyFrame::RainbowColourSwapFunction(int startPos, wxString currentLineString) {
+    for (int i = 0; i < currentLineString.length(); i++) {
+        char currentChar = currentLineString[i].GetValue();
+        int offset = startPos + i;
+        if (currentChar == '(' || currentChar == ')') {textField->SetStyle(offset, offset + 1, app_data.rainbowBraces);}
+        else if (currentChar == '{' || currentChar == '}') {textField->SetStyle(offset, offset + 1, app_data.rainbowCurlyBraces);} 
+        else {textField->SetStyle(offset, offset + 1, newStyle);}
+    }
+
+}
