@@ -13,8 +13,8 @@
 #include <wx/filefn.h> 
 
 
+
 struct AppData {
-    
     wxString dataFilePath{ "" };
     int currentLineNum{1};
     wxColour backgroundColour{ 50,50,50 };
@@ -25,8 +25,6 @@ struct AppData {
     wxColour textColour{ 225,100,0 };
     wxColour rainbowBraces{ 200,0,200 };
     wxColour rainbowCurlyBraces{ 200,250,0 };
-
-
 };
 
 

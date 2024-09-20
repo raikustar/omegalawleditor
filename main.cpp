@@ -3,9 +3,9 @@
 // other includes
 
 /*
-    - Update whole string file if rainbowtoggle bool is changed.
     - Properly follow current line, and sync up textField with numberField
     - Highlight current active line
+    - Make into executable
 
 */
 
@@ -62,12 +62,11 @@ MyFrame::MyFrame()
     // Notepad 
     textField = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_RICH | wxUSE_SCROLLBAR | wxTE_DONTWRAP);
 
-   
     // Visual colours
     newStyle.SetFont(*font);
     newStyle.SetBackgroundColour(app_data.backgroundColourLight);
     newStyle.SetTextColour(app_data.textColour);
-
+    
     redrawTextCtrlWindow();
     updateLineNumbers();
 
@@ -80,14 +79,9 @@ MyFrame::MyFrame()
     CreateStatusBar();
     SetStatusText(app_data.dataFilePath); 
 
-
     textField->Bind(wxEVT_TEXT, &MyFrame::OnTextChanged, this);
-
     textField->Bind(wxEVT_KEY_DOWN, &MyFrame::OnKeyUpdate, this);
     numberField->Bind(wxEVT_KILL_FOCUS, &MyFrame::OnRemoveNumberFieldFocus, this);
-
-    // press enter event bind to reload text?
-
 
     Bind(wxEVT_MENU, &MyFrame::OnCustomOpen, this, CUSTOM_OPTION);
     Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
@@ -228,12 +222,11 @@ void MyFrame::OnVisualOkButtonPressed(wxCommandEvent& event) {
 // Misc member functions
 void MyFrame::redrawTextCtrlWindow()
 {
-    textField->SetDefaultStyle(newStyle);
+    textField->SetFocus();
     textField->SetBackgroundColour(newStyle.GetBackgroundColour());
     textField->SetFont(newStyle.GetFont());
     if (rainbowTextToggle) {changeTextFieldColourToRainbow();}
-    else { textField->SetStyle(0, textField->GetLastPosition(), newStyle);}
-    textField->SetFocus();
+    else { textField->SetDefaultStyle(newStyle); }
     textField->Refresh();
     textField->Update();
     
