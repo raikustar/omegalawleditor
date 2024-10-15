@@ -357,10 +357,10 @@ void MyFrame::currentRainbowColourChange() {
     char c = static_cast<char>(c_int);
     
     if (c == '{' || c == '}') {
-        changeColourAtChar(pos, app_data.rainbowCurlyBraces,0);
+        changeColourAtChar(pos, app_data.rainbowCurlyBraces,1);
     }
     else if (c == '(' || c == ')') {
-        changeColourAtChar(pos, app_data.rainbowBraces, 1);
+        changeColourAtChar(pos, app_data.rainbowBraces, 2);
     }
 }
 
