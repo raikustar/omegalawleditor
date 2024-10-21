@@ -3,14 +3,8 @@
 // other includes
 
 /*
-
-
-    - Refresh rainbowtext properly when changing state.
-    - Properly follow current line:
-        Hold key down and update pos, some event?
-    
+    - Add styletext numbers..
     - Make into executable
-
 */
 
 // App colours and other visual misc..
@@ -54,23 +48,19 @@ MyFrame::MyFrame()
     menuBar->Append(menuOptions, "Options");
     SetMenuBar(menuBar);
 
-    // After menu window for all other boxes to be organized 
-    wxBoxSizer* mainBoxSizer = new wxBoxSizer(wxHORIZONTAL);
-
-    // Numbers for lines of text 
-    numberField = new wxTextCtrl(this, wxID_ANY, "1", wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_RICH | wxTE_CENTRE | wxTE_READONLY | wxTE_NOHIDESEL | wxTE_NO_VSCROLL); 
-    
-    numberField->SetFont(*font);
-    numberField->SetMaxSize(wxSize(60, 2000));
-    numberField->SetVirtualSize(wxSize(60, 2000));
-    numberField->SetForegroundColour(app_data.lineIdentifierTextColour);
-    numberField->SetBackgroundColour(app_data.lineIdentifierBackgroundColour);
-
 
     // Notepad 
     textField = new wxStyledTextCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_RICH | wxUSE_SCROLLBAR | wxTE_DONTWRAP);
-    textField->SetMarginWidth(1, 0);
-    textField->SetScrollWidth(1);
+    // hide wxStyledTextCtrl vertical margin area
+    textField->SetMarginType(0, wxSTC_MARGIN_NUMBER);
+    textField->SetMarginWidth(0, 30);
+    textField->SetMarginLeft(5);
+
+
+
+    // set cursor colour
+    textField->SetCaretForeground(app_data.textHighlightColour);
+    textField->SetCaretWidth(2);
 
     // Visual colours
     newStyle.SetFont(*font);
@@ -80,23 +70,12 @@ MyFrame::MyFrame()
     
     redrawTextCtrlWindow();
     defaultStyleTextField();
-    mainBoxSizer->Add(numberField, 0, wxALL | wxEXPAND, 0);
-    mainBoxSizer->Add(textField, 1, wxALL | wxEXPAND, 0);
-
-    this->SetSizer(mainBoxSizer);
     this->SetInitialSize(wxSize(800, 500));
 
     CreateStatusBar();
     SetStatusText(app_data.dataFilePath); 
     
-
-    textField->Bind(wxEVT_STC_CHANGE, &MyFrame::OnTextChanged, this); // wxEVT_STC_CHARADDED
-    /*
-    
-        different event for updateLineNumberHighlightTextChange?
-    */
-
-    numberField->Bind(wxEVT_KILL_FOCUS, &MyFrame::OnRemoveNumberFieldFocus, this);
+    textField->Bind(wxEVT_STC_CHANGE, &MyFrame::OnTextChanged, this);
 
 
     Bind(wxEVT_MENU, &MyFrame::OnCustomOpen, this, CUSTOM_OPTION);
@@ -224,9 +203,11 @@ void MyFrame::OnVisualOkButtonPressed(wxCommandEvent& event) {
 // Misc member functions
 void MyFrame::redrawTextCtrlWindow()
 { 
-    if (textField->GetValue().length() == 0) {
-        numberField->SetLabel("1");
-    }
+
+    int pos = textField->GetInsertionPoint();
+    int lineNum = getLineNumber(pos);
+    app_data.currentLineNum = lineNum;
+
     textField->SetFocus();
     textField->StyleSetFont(wxSTC_STYLE_DEFAULT, *styledFont);
     
@@ -245,53 +226,23 @@ void MyFrame::updateLineNumbers()
         Set numbers to numberField object
     */
     int textFieldLines = textField->GetNumberOfLines();
-    syncTextAndNumberField();
+    textField->SetMarginType(0, wxSTC_MARGIN_NUMBER);
+    textField->SetMarginLeft(5);
     
-    if (app_data.totalLines != textFieldLines) {
-        wxString lineNumberString{};
-        for (int i = 1; i <= textFieldLines; i++) { lineNumberString += wxString::Format("%d\n", i); }
-        numberField->SetLabel(lineNumberString);
-        numberField->Refresh();
-        numberField->Update();
-        app_data.totalLines = textFieldLines;
+
+    if (textFieldLines < 10) {
+        textField->SetMarginWidth(0, 30);
     }
-    //highlightLineNumber();
-}
-
-void MyFrame::highlightLineNumber() {
-    /*
-        logic for highlight current number at numberField
-    */
-}
-
-void MyFrame::syncTextAndNumberField() {
-    /*
-        Currently it changes line on the left instantly
-        Create an offset or point where it follows to a new line and when it doesn't
-
-        i.e. move up from the last line of the window, 
-        and only start updating to new lines if I reach at the top of the current window(highest line per window)
-        
-   
-    */
-    int pos = textField->GetInsertionPoint();
-    int lineNum = getLineNumber(pos);
-
-    int tFScrollPos = textField->GetScrollPos(wxVERTICAL);
-    int nFScrollPos = numberField->GetScrollPos(wxVERTICAL);
-
-    if (tFScrollPos != nFScrollPos) {
-        numberField->SetScrollPos(wxVERTICAL, tFScrollPos, true);
-        if (lineNum < app_data.currentLineNum)
-            numberField->ShowPosition(tFScrollPos);
-        else {
-            numberField->ShowPosition(tFScrollPos+30);
-        }
-        numberField->Refresh();
-        numberField->Update();
+    else if (textFieldLines < 100) {
+        textField->SetMarginWidth(0, 45);
     }
-    app_data.currentLineNum = lineNum;
+    else {
+        textField->SetMarginWidth(0, 60);
+
+    }
+    
 }
+
 
 int MyFrame::getLineNumber(long pos) {
     long col{}, line{};
@@ -322,6 +273,7 @@ void MyFrame::customRainbowLogic() {
         defaultStyleTextField(true);
     }
 }
+
 void MyFrame::changeFullTextToRainbow() {
     wxString text = textField->GetText();
     if (text.length() == 0) {

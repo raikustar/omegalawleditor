@@ -76,10 +76,8 @@ private:
     int getLineNumber(long currentPos);
     void statusUpdateText(wxString statusText, bool path = true);
     void customRainbowLogic();
-    void syncTextAndNumberField();
     void defaultStyleTextField(bool reset = false);
     void changeColourAtChar(int pos, wxColour colour, int vector_index);
-    void highlightLineNumber();
 
     // Event functions
     void OnExit(wxCommandEvent& event);
